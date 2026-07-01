@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:payment_method_stripe/core/service/api_service.dart';
+import 'package:payment_method_stripe/core/service/stripe_service.dart';
 import '../models/payment_model.dart';
 
-import '../services/stripe_service.dart';
 
 class PaymentViewModel extends ChangeNotifier {
   final ApiService _apiService = ApiService();
