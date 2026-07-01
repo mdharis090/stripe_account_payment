@@ -14,7 +14,7 @@ class StripeService {
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Your Store Name',
         style: ThemeMode.light,
-        primaryButtonColor: Colors.blue,
+       // primaryButtonColor: Colors.blue,
       ),
     );
   }
