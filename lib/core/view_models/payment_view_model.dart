@@ -1,98 +1,201 @@
+// lib/view_models/payment_view_model.dart
 import 'package:flutter/material.dart';
+import 'package:payment_method_stripe/core/constant/app_constants.dart';
+import 'package:payment_method_stripe/core/errors/error_handler.dart';
+import 'package:payment_method_stripe/core/errors/error_messages.dart';
 import 'package:payment_method_stripe/core/service/api_service.dart';
 import 'package:payment_method_stripe/core/service/stripe_service.dart';
+
 import '../models/payment_model.dart';
 
+
+// ✅ Custom Payment Method Enum (Stripe se alag)
+enum PaymentMethodType { card, googlePay, applePay }
 
 class PaymentViewModel extends ChangeNotifier {
   final ApiService _apiService = ApiService();
   final StripeService _stripeService = StripeService();
+  final ErrorHandler _errorHandler = ErrorHandler();
   
-  // State Variables
-  PaymentModel? _currentPayment;
+  // =============================================
+  // STATE
+  // =============================================
+  List<PaymentModel> _payments = [];
   bool _isLoading = false;
+  bool _isProcessing = false;
   String? _errorMessage;
+  String? _successMessage;
+  int _selectedAmount = 1000;
+  String _selectedCurrency = 'usd';
+  PaymentMethodType _selectedMethod = PaymentMethodType.card; // ✅ Custom enum
   
-  // Getters
-  PaymentModel? get currentPayment => _currentPayment;
+  // =============================================
+  // GETTERS
+  // =============================================
+  List<PaymentModel> get payments => _payments;
   bool get isLoading => _isLoading;
+  bool get isProcessing => _isProcessing;
   String? get errorMessage => _errorMessage;
-  
-  // Payment Method
-  PaymentMethod _selectedMethod = PaymentMethod.card;
-  PaymentMethod get selectedMethod => _selectedMethod;
-  
-  // Amount Selection
-  int _selectedAmount = 1000; // $10.00
+  String? get successMessage => _successMessage;
   int get selectedAmount => _selectedAmount;
+  String get selectedCurrency => _selectedCurrency;
+  PaymentMethodType get selectedMethod => _selectedMethod; // ✅ Custom enum
+  List<int> get presetAmounts => AppConstants.presetAmounts;
+  List<String> get currencies => AppConstants.currencies;
   
-  List<int> presetAmounts = [500, 1000, 2000, 5000, 10000];
-  
+  // =============================================
+  // ACTIONS
+  // =============================================
   void selectAmount(int amount) {
     _selectedAmount = amount;
     notifyListeners();
   }
   
-  void selectPaymentMethod(PaymentMethod method) {
+  void selectCurrency(String currency) {
+    _selectedCurrency = currency;
+    notifyListeners();
+  }
+  
+  void selectPaymentMethod(PaymentMethodType method) { // ✅ Custom enum
     _selectedMethod = method;
     notifyListeners();
   }
   
-  // Main Payment Function
+  // =============================================
+  // PROCESS PAYMENT
+  // =============================================
   Future<bool> processPayment(int userId) async {
-    _setLoading(true);
-    _clearError();
+    _setProcessing(true);
+    _clearMessages();
     
     try {
-      // Step 1: Create Payment Intent via API
-      final clientSecret = await _apiService.createPaymentIntent(
+      // Step 1: Create Payment Intent
+      final result = await _apiService.createPaymentIntent(
         amount: _selectedAmount,
-        currency: 'usd',
+        currency: _selectedCurrency,
         userId: userId,
       );
       
-      // Step 2: Initialize Stripe Payment Sheet
-      await _stripeService.initPaymentSheet(clientSecret);
+      String clientSecret = '';
+      bool apiSuccess = false;
+      
+      result.handle(
+        onSuccess: (data) {
+          clientSecret = data;
+          apiSuccess = true;
+        },
+        onFailure: (error) {
+          _setError(_errorHandler.handleError(error));
+          apiSuccess = false;
+        },
+      );
+      
+      if (!apiSuccess) {
+        _setProcessing(false);
+        return false;
+      }
+      
+      // Step 2: Initialize Payment Sheet
+      try {
+        await _stripeService.initPaymentSheet(clientSecret);
+      } catch (e) {
+        _setError(_errorHandler.handleError(e));
+        _setProcessing(false);
+        return false;
+      }
       
       // Step 3: Present Payment Sheet
-      await _stripeService.presentPaymentSheet();
+      try {
+        await _stripeService.presentPaymentSheet();
+      } catch (e) {
+        _setError(_errorHandler.handleError(e));
+        _setProcessing(false);
+        return false;
+      }
       
-      // Step 4: Payment Success
-      _setLoading(false);
+      // Step 4: Success
+      _setSuccess(ErrorMessages.paymentSuccess);
+      await getPaymentHistory(userId);
+      _setProcessing(false);
       return true;
       
     } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
+      _setError(_errorHandler.handleError(e));
+      _setProcessing(false);
       return false;
     }
   }
   
-  // Get Payment History
-  Future<List<PaymentModel>> getPaymentHistory(int userId) async {
+  // =============================================
+  // GET PAYMENT HISTORY
+  // =============================================
+  Future<void> getPaymentHistory(int userId) async {
+    _setLoading(true);
+    _clearMessages();
+    
     try {
-      return await _apiService.getPaymentHistory(userId);
+      final result = await _apiService.getPaymentHistory(userId);
+      
+      result.handle(
+        onSuccess: (payments) {
+          _payments = payments;
+        },
+        onFailure: (error) {
+          _setError(_errorHandler.handleError(error));
+        },
+      );
     } catch (e) {
-      _setError(e.toString());
-      return [];
+      _setError(_errorHandler.handleError(e));
+    } finally {
+      _setLoading(false);
     }
   }
   
-  // Private Helpers
+  // =============================================
+  // HELPERS
+  // =============================================
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
   
-  void _setError(String error) {
-    _errorMessage = error;
+  void _setProcessing(bool processing) {
+    _isProcessing = processing;
     notifyListeners();
   }
   
-  void _clearError() {
+  void _setError(String error) {
+    _errorMessage = error;
+    _successMessage = null;
+    notifyListeners();
+  }
+  
+  void _setSuccess(String message) {
+    _successMessage = message;
     _errorMessage = null;
     notifyListeners();
   }
+  
+  void _clearMessages() {
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+  }
+  
+  String getFormattedAmount(int amount, String currency) {
+    final double amountInMainCurrency = amount / 100;
+    final symbol = _getCurrencySymbol(currency);
+    return '$symbol${amountInMainCurrency.toStringAsFixed(2)}';
+  }
+  
+  String _getCurrencySymbol(String currency) {
+    switch (currency.toLowerCase()) {
+      case 'usd': return '\$';
+      case 'eur': return '€';
+      case 'gbp': return '£';
+      case 'pkr': return 'Rs.';
+      case 'inr': return '₹';
+      default: return '\$';
+    }
+  }
 }
-
-enum PaymentMethod { card, googlePay, applePay }
