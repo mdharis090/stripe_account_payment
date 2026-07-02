@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 class AppConstants {
   // API URL - Change this according to your environment
-  static const String baseUrl = 'http://localhost:4000';
+  static const String baseUrl = 'http://172.17.2.49:4000';
   // For Android Emulator: http://10.0.2.2:4000
   // For Real Device: http://192.168.1.100:4000 (your PC IP)
   
