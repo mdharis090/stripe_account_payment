@@ -21,6 +21,14 @@ class AmountSelector extends StatelessWidget {
         final isSelected = amount == selectedAmount;
         final amountInDollars = amount / 100;
         
+
+
+
+
+
+
+
+        
         return GestureDetector(
           onTap: () => onAmountSelected(amount),
           child: Container(

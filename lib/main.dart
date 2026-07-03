@@ -68,7 +68,7 @@ void main() async{
 
   WidgetsFlutterBinding.ensureInitialized();
 
-  Stripe.publishableKey ='pk_test_51Tny3OHZcEjFc9CNG8eSoXhgqLz6DIutYMPAKsnWnbRhDxi2uC4oij9LniPjcUKTdpMjkiKBL6aRzRc1GDndyTpF00XSJBa6k1';
+  Stripe.publishableKey ='';
 
   await Stripe.instance.applySettings();
   runApp(const MyApp());
