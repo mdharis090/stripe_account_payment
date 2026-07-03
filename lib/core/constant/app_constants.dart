@@ -7,7 +7,7 @@ class AppConstants {
   // For Real Device: http://192.168.1.100:4000 (your PC IP)
   
   // Stripe Keys
-  static const String stripePublishableKey = 'pk_test_51Tny3OHZcEjFc9CNG8eSoXhgqLz6DIutYMPAKsnWnbRhDxi2uC4oij9LniPjcUKTdpMjkiKBL6aRzRc1GDndyTpF00XSJBa6k1';
+ 
   
   // Payment Constants
   static const int minAmount = 50; // $0.50

@@ -67,8 +67,8 @@ import 'package:payment_method_stripe/core/Widgets/home.dart';
 void main() async{
 
   WidgetsFlutterBinding.ensureInitialized();
-
-  Stripe.publishableKey ='';
+ Stripe.publishableKey ='';
+ 
 
   await Stripe.instance.applySettings();
   runApp(const MyApp());
